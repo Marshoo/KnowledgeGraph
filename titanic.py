@@ -522,3 +522,5 @@ predictions = modelgsGBC.predict(df_test)
 test_ID = df_test['PassengerId']
 result = pd.DataFrame({'PassengerId': test_ID, 'Survived': predictions.astype(np.int32)})
 result.to_csv('prediction.csv',index=False,sep=',')
+
+# 在最后面添加了这几个字
