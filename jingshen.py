@@ -28,7 +28,7 @@ all_df = pd.DataFrame(df3, columns=['个人信息标识符', '性别', '年龄',
 all_df.rename(columns={'诊断': '诊断名称'})
 
 # 性别数值转换
-all_df['性别'].replace(['1', '2'], ['男性', '女性'], inplace=True)
+all_df['性别'].replace(['1', '2'], ['男', '女'], inplace=True)
 
 # 将生日转换成年龄，数据中的生日已经是标准时间格式
 all_df['年龄'] = pd.to_datetime(all_df['年龄'])
@@ -38,7 +38,9 @@ import datetime as dt
 now_year = dt.datetime.today().year  # 当前年份
 all_df['age'] = now_year - all_df['年龄'].dt.year  # 获得年龄
 all_df = all_df.drop(['年龄'], axis=1)  # 删掉原来的列
-all_df.rename(columns={'age': '年龄'}, inplace=True)  # 重命名
+all_df.rename(columns={'age': '年龄（岁）'}, inplace=True)  # 重命名
+all_df = all_df.drop_duplicates()
 
-all_df.to_excel('/home/mj/after_data/jingshen.xlsx')
+all_df.to_excel('/home/mj/after_data/jingshen.xlsx', index=False)
 # test  test test
+
