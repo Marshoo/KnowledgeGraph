@@ -39,10 +39,13 @@ pd.set_option('display.max_rows', None)  # 设置显示所有行
 读取数据
 """
 # 1.读取数据 HIS系统病理筛选.xlsx
-renal_data = pd.read_excel('/home/mj/data/renalPathology_data/HIS系统病理筛选.xlsx')
+renal_data = pd.read_excel('/home/mj/data/renalPathology_data/HIS系统病理筛选.xlsx')   # 1195
 # 2.查看是否每条记录都有“光镜”字符串
-is_gj = renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('光镜：')]
-renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'] = renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.split("光镜：")[1])
+is_gj = renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('光镜：')]   # 1195，与总记录匹配，说明每条记录都有
+# 3.以”光镜“二字作为切分点，只留下存放信息的字符串
+renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'] = \
+    renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.split('光镜：')[1])
+
 
 """
 “诊断”共有3种情况：
@@ -232,9 +235,11 @@ print(len(renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contain
 # （6）查看共有多少条记录出现关键词“没有节段硬化”
 print(len(renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('没有节段硬化')]))  # 0
 # （7）将“未明显硬化”1条记录，将“未明显硬化”修改为“0个硬化”，便于后续正则提取
-renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'] = renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.replace('未明显硬化', '0个硬化'))
+renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'] = \
+    renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.replace('未明显硬化', '0个硬化'))
 # （8）提取“节段性硬化数目”
-renal_data['节段性硬化数目'] = renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.extract('.*?(\d+|[一二三四五六七八九十]+)\D*硬化')
+renal_data['节段性硬化数目'] = \
+    renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.extract('.*?(\d+|[一二三四五六七八九十]+)\D*硬化')
 # （9）查看“节段性硬化数目”为Nan值的记录
 print(renal_data[renal_data['节段性硬化数目'].isna()])  # 994
 # （10）将Nan值填充为0
@@ -258,9 +263,11 @@ print(len(renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contain
 # （2）查看共有多少条记录出现关键词“内皮细胞未见”
 print(len(renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('内皮细胞未见')]))  # 201
 # （3）在所有出现“内皮细胞”的记录里增加数字1，便于后续正则提取
-renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'] = renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.replace('内皮细胞', '1内皮细胞'))
+renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'] = \
+    renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.replace('内皮细胞', '1内皮细胞'))
 # （4）将“内皮细胞未见”修改为“0内皮细胞”，便于后续正则提取
-renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'] = renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.replace('1内皮细胞未见', '0内皮细胞'))
+renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'] = \
+    renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.replace('1内皮细胞未见', '0内皮细胞'))
 # （5）提取“内皮细胞增生”
 renal_data['内皮细胞增生'] = renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.extract('.*?(\d+)内皮细胞')
 # （6）查看“内皮细胞增生”不为Nan值的记录有多少
@@ -495,3 +502,133 @@ renal_data['肾小管萎缩'] = renal_data['肾小管萎缩'].fillna(0)
 2.0     66
 0.0     61
 """
+
+"""
+‘间质纤维化“共有6种出现情况：
+a.间质纤维化均不明显
+b.纤维化不明显
+c.纤维化+
+d.纤维化++
+e.纤维化+++
+f.未描述间质纤维化
+"""
+# 18.匹配--间质纤维化
+# （1）查看共有多少条记录出现“纤维化”
+print(len(renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('纤维化')]))  # 1173
+# （2）提取包含关键词“纤维化”的记录，创建xianweihua表
+xianweihua = renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('纤维化')][['EMPI_ID', 'DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)']]
+# （3）在xianweihua表中增加“纤维化”一列，内容即提取纤维化所在句子
+xianweihua['纤维化'] = '纤维化' + xianweihua['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.split('纤维化')[1].split('，')[0])
+# （4）去除纤维化中出现的数字，以免对后续提取造成干扰
+xianweihua['纤维化'] = xianweihua['纤维化'].apply(lambda x: x.translate(str.maketrans('', '', digits)))
+# （5）在xianweihua表中“系膜区”列中找到关键词“轻”、“中”、“重”，对应替换成需要提取的数字
+xianweihua['纤维化'] = xianweihua['纤维化'].apply(lambda x: x.replace('+++', '3'))
+xianweihua['纤维化'] = xianweihua['纤维化'].apply(lambda x: x.replace('++', '2'))
+xianweihua['纤维化'] = xianweihua['纤维化'].apply(lambda x: x.replace('+', '1'))
+# （6）提取出xianweihua表中“纤维化”列的数字
+xianweihua['间质纤维化'] = xianweihua['纤维化'].str.extract('(\d+)')
+# （7）将xianweihua表中的Nan中填充为1
+xianweihua['间质纤维化'] = xianweihua['间质纤维化'].fillna(1)
+# （8）将xianweihua表中的“肾小管萎缩”列值转换为int类型
+xianweihua['间质纤维化'] = xianweihua['间质纤维化'].astype(int)
+# （9）将出现的“纤维化不明显”、“肾小管未见萎缩”等的“间质纤维化”列值均改为0
+xianweihua.loc[xianweihua['纤维化'].str.contains('不明显'), '间质纤维化'] = 0
+# （10）删除xianweihua表中的“纤维化”列
+del xianweihua['纤维化']
+# （11）将xianweihua表与sz_data表进行“EMPI_ID”、“DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)”列外连接合并
+renal_data = pd.merge(renal_data, xianweihua, on=['EMPI_ID', 'DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'], how='left')
+# （12）将“间质纤维化”列值填充为0
+renal_data['间质纤维化'] = renal_data['间质纤维化'].fillna(0)
+"""
+总结：（间质纤维化、记录数量）
+0.0    538
+1.0    530
+3.0     66
+2.0     61
+"""
+
+"""
+”间质炎症细胞浸润“共有种出现情况：
+a.细胞散在浸润
+b.细胞浸润
+c.少量单个核细胞
+d.散在极少量单个核细胞分布
+e.较多单个核细胞分布并灶性聚集
+f.少量单个核细胞并小灶性聚集
+"""
+# 19.匹配--间质炎症细胞浸润
+# （1）查看共有多少条记录出现“纤维化”
+print(len(renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('单个核细胞')]))  # 1011
+print(len(renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('核')]))  # 1166
+# （2）提取包含关键词“核”的记录，创建hexibao表
+hexibao = renal_data[renal_data['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].str.contains('核')][['EMPI_ID', 'DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)']]
+# （3）在hexibao表中增加“核”一列，内容即提取核所在句子
+hexibao['细胞浸润1'] = hexibao['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.split('核')[0])
+hexibao['细胞浸润1'] = hexibao['细胞浸润1'].apply(lambda x: x.replace('。', '，'))
+hexibao['细胞浸润1'] = hexibao['细胞浸润1'].apply(lambda x: x.replace('；', '，'))
+hexibao['细胞浸润1'] = hexibao['细胞浸润1'].apply(lambda x: x.replace('、', '，'))
+hexibao['细胞浸润1'] = hexibao['细胞浸润1'].apply(lambda x: x.split('，')[-1])
+hexibao['细胞浸润2'] = '核' + hexibao['DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'].apply(lambda x: x.split('核')[1])
+hexibao['细胞浸润2'] = hexibao['细胞浸润2'].apply(lambda x: x.replace('，', '。'))
+hexibao['细胞浸润2'] = hexibao['细胞浸润2'].apply(lambda x: x.replace('；', '。'))
+hexibao['细胞浸润2'] = hexibao['细胞浸润2'].apply(lambda x: x.split('。')[0])
+hexibao['细胞浸润'] = hexibao['细胞浸润1'] + hexibao['细胞浸润2']
+hexibao = hexibao.drop(hexibao[['细胞浸润1', '细胞浸润2']], axis=1)
+# （4）去除“细胞浸润”中出现的数字，以免对后续提取造成干扰
+hexibao['细胞浸润'] = hexibao['细胞浸润'].apply(lambda x: x.translate(str.maketrans('', '', digits)))
+# （5）在hexibao表中“系膜区”列中找到关键词“轻”、“中”、“重”，对应替换成需要提取的数字
+hexibao['细胞浸润'] = hexibao['细胞浸润'].apply(lambda x: x.replace('较多', '2'))
+hexibao['细胞浸润'] = hexibao['细胞浸润'].apply(lambda x: x.replace('大量', '2'))
+hexibao['细胞浸润'] = hexibao['细胞浸润'].apply(lambda x: x.replace('中等量', '1'))
+# （6）提取出hexibao表中“细胞浸润”列的数字
+hexibao['间质炎症细胞浸润'] = hexibao['细胞浸润'].str.extract('(\d+)')
+# （7）将hexibao表中的Nan中填充为0
+hexibao['间质炎症细胞浸润'] = hexibao['间质炎症细胞浸润'].fillna(0)
+# （8）将hexibao表中的“间质炎症细胞浸润”列值转换为int类型
+hexibao['间质炎症细胞浸润'] = hexibao['间质炎症细胞浸润'].astype(int)
+# （9）删除“细胞浸润”列
+del hexibao['细胞浸润']
+# （10）将hexibao表与renal_data表进行“EMPI_ID”、“DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)”列外连接合并
+renal_data = pd.merge(renal_data, hexibao, on=['EMPI_ID', 'DBMS_LOB.SUBSTR(A.DIAG_DESC,4000)'], how='left')
+# （11）将“间质炎症细胞浸润”列值填充为0
+renal_data['间质炎症细胞浸润'] = renal_data['间质炎症细胞浸润'].fillna(0)
+"""
+总结：（间质炎症细胞浸润、记录数量）
+0.0    969
+2.0    221
+1.0      5
+"""
+
+"""
+计算指标
+硬化小球比例：球性硬化小球数/肾小球总数
+节段硬化小球比例：节段性硬化数目/肾小球总数
+新月体小球比例：新月体小球数目/肾小球总数
+"""
+# 20.计算硬化小球比例
+# （1）硬化小球比例：球性硬化小球数/肾小球总数
+renal_data['硬化小球比例'] = renal_data['球性硬化小球数'] / renal_data['肾小球总数']
+# （2）解决出现分母为0计算出的结果
+renal_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+# （3）将Nan值填充为0
+renal_data['硬化小球比例'] = renal_data['硬化小球比例'].fillna(0)
+
+# 21.计算节段硬化小球比例
+# （1）节段硬化小球比例：节段性硬化数目/肾小球总数
+renal_data['节段硬化小球比例'] = renal_data['节段性硬化数目'] / renal_data['肾小球总数']
+# （2）解决出现分母为0计算出的结果
+renal_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+# （3）将Nan值填充为0
+renal_data['节段硬化小球比例'] = renal_data['节段硬化小球比例'].fillna(0)
+
+# 22.计算新月体小球比例
+# （1）新月体小球比例：新月体小球数目/肾小球总数
+renal_data['新月体小球比例'] = renal_data['新月体小球数目'] / renal_data['肾小球总数']
+# （2）解决出现分母为0计算出的结果
+renal_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+# （3）将Nan值填充为0
+renal_data['新月体小球比例'] = renal_data['新月体小球比例'].fillna(0)
+
+
+# 23.保存提取后的文件
+renal_data.to_excel("/home/mj/after_data/renalPathology_data/after_HIS.xlsx", encoding='utf8', index=False)
